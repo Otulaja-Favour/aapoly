@@ -7,3 +7,6 @@ dist-ssr
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
+
+# Local-only dev tooling (mock AfriBase server) — never shipped to production.
+scripts/mock-afribase.mjs
