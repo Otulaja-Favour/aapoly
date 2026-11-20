@@ -3,13 +3,13 @@ import { computed, onMounted, ref } from 'vue'
 import BaseButton from '@/components/BaseButton.vue'
 import ConfigNotice from '@/components/ConfigNotice.vue'
 import {
+  assignStudentsToGroup,
   clearGroups,
-  createGroup,
+  createGroups,
   listGroups,
   listProjects,
   listStudents,
-  seedProjects,
-  setStudentGroup
+  seedProjects
 } from '@/lib/api'
 import { buildGroups } from '@/lib/grouping'
 import { PROJECTS } from '@/data/projects'
@@ -66,13 +66,25 @@ async function publish() {
   try {
     // Deleting groups nulls each student's group_id (FK on delete set null).
     await clearGroups()
-    for (const group of preview.value) {
-      const created = await createGroup({ name: group.name, project_id: group.project?.id || null })
-      const groupId = created?.id || created?.group?.id
-      for (const member of group.students) {
-        await setStudentGroup(member.id, groupId)
-      }
-    }
+
+    // Two batched writes instead of one request per group/student:
+    // all groups in a single insert, then one update per group for its members.
+    const created = await createGroups(
+      preview.value.map((group) => ({ name: group.name, project_id: group.project?.id || null }))
+    )
+    const createdRows = Array.isArray(created) ? created : created ? [created] : []
+    const idFor = (group, index) =>
+      createdRows.find((row) => row.name === group.name)?.id ?? createdRows[index]?.id
+
+    await Promise.all(
+      preview.value.map((group, index) =>
+        assignStudentsToGroup(
+          group.students.map((s) => s.id),
+          idFor(group, index)
+        )
+      )
+    )
+
     preview.value = []
     await load()
     toast.success('Assignments published. Students can now check their groups.')

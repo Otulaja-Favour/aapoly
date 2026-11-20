@@ -59,8 +59,11 @@ export async function clearStudents() {
   return unwrap(await afribase.from('class_students').delete().not('id', 'is', null))
 }
 
-export async function setStudentGroup(studentId, groupId) {
-  return unwrap(await afribase.from('class_students').update({ group_id: groupId }).eq('id', studentId))
+export async function assignStudentsToGroup(studentIds, groupId) {
+  if (!studentIds.length) return []
+  return unwrap(
+    await afribase.from('class_students').update({ group_id: groupId }).in('id', studentIds)
+  )
 }
 
 export async function findStudentByMatric(matricNumber) {
@@ -82,9 +85,9 @@ export async function clearGroups() {
   return unwrap(await afribase.from('class_groups').delete().not('id', 'is', null))
 }
 
-export async function createGroup({ name, project_id }) {
-  const res = unwrap(await afribase.from('class_groups').insert({ name, project_id }))
-  return Array.isArray(res) ? res[0] : res
+export async function createGroups(groups) {
+  if (!groups.length) return []
+  return unwrap(await afribase.from('class_groups').insert(groups))
 }
 
 export async function setGroupProject(groupId, projectId) {
