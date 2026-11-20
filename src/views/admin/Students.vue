@@ -4,6 +4,7 @@ import BaseButton from '@/components/BaseButton.vue'
 import ConfigNotice from '@/components/ConfigNotice.vue'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import { addStudents, clearStudents, deleteStudent, listGroups, listStudents } from '@/lib/api'
+import { departmentFromMatric } from '@/lib/departments'
 import { toast } from '@/lib/toast'
 
 const raw = ref('')
@@ -28,6 +29,7 @@ const filtered = computed(() => {
 })
 
 const groupName = (id) => groups.value.find((g) => g.id === id)?.name || '—'
+const dept = (matricNumber) => departmentFromMatric(matricNumber)
 
 async function load() {
   try {
@@ -41,27 +43,59 @@ async function load() {
   }
 }
 
-/** Accepts "Full Name, Matric" (comma or tab) or "Full Name MATRIC" (last token). */
+/** Matric numbers look like FH-NCC-25-0001 — a hyphenated code with at least 3 parts. */
+const MATRIC_RE = /^[A-Za-z]{2,6}(-[A-Za-z0-9]{1,6}){2,3}$/
+const isMatric = (token) => MATRIC_RE.test(String(token || '').trim())
+
+/**
+ * Accepts three paste shapes; blank lines and section headers are ignored:
+ *   "Full Name, Matric"    (comma or tab)
+ *   "Full Name MATRIC"     (matric as the last token on the line)
+ *   "Full Name" then "MATRIC" on the next line
+ */
 function parseList(text) {
   const rows = []
+  let pendingName = ''
+
   for (const line of text.split(/\r?\n/)) {
     const trimmed = line.trim()
-    if (!trimmed) continue
-    let name = ''
-    let matric = ''
+    if (!trimmed) {
+      pendingName = ''
+      continue
+    }
+
     if (trimmed.includes(',') || trimmed.includes('\t')) {
       const parts = trimmed.split(/[,\t]+/).map((p) => p.trim()).filter(Boolean)
-      name = parts[0] || ''
-      matric = parts[1] || ''
-    } else {
-      const tokens = trimmed.split(/\s+/)
-      if (tokens.length >= 2) {
-        matric = tokens[tokens.length - 1]
-        name = tokens.slice(0, -1).join(' ')
-      }
+      const matric = parts.find(isMatric) || parts[1] || ''
+      const name = parts.filter((p) => p !== matric).join(' ')
+      if (name && matric) rows.push({ full_name: name, matric_number: matric })
+      pendingName = ''
+      continue
     }
-    if (name && matric) rows.push({ full_name: name, matric_number: matric })
+
+    const tokens = trimmed.split(/\s+/)
+    const last = tokens[tokens.length - 1]
+
+    // Matric on its own line → pairs with the name directly above it.
+    if (tokens.length === 1 && isMatric(last)) {
+      if (pendingName) {
+        rows.push({ full_name: pendingName, matric_number: last })
+        pendingName = ''
+      }
+      continue
+    }
+
+    // "Full Name MATRIC" on one line.
+    if (tokens.length >= 2 && isMatric(last)) {
+      rows.push({ full_name: tokens.slice(0, -1).join(' '), matric_number: last })
+      pendingName = ''
+      continue
+    }
+
+    // Otherwise it's a name (or a section header) waiting for its matric.
+    pendingName = trimmed
   }
+
   return rows
 }
 
@@ -146,13 +180,14 @@ onMounted(load)
       <section class="card add">
         <h3>Add students</h3>
         <p class="muted">
-          One student per line as <strong>Full Name, Matric Number</strong>. You can paste straight
-          from a spreadsheet.
+          One student per line as <strong>Full Name, Matric Number</strong> — or put the name and its
+          matric on separate lines. Blank lines and section headers are ignored, and the department
+          is read from the matric number.
         </p>
         <textarea
           v-model="raw"
           class="textarea"
-          placeholder="Chidi Okafor, AAP/2021/0456&#10;Amina Bello, AAP/2021/0457&#10;Tunde Adeyemi AAP/2021/0458"
+          placeholder="Chidi Okafor, FH-SWD-25-0001&#10;Amina Bello, FH-SWD-25-0002&#10;&#10;NETWORKING AND CLOUD COMPUTING&#10;OGUNBANWO MUTIAT MODUPEOLUWA&#10;FH-NCC-25-0001"
         />
         <div class="add-actions">
           <BaseButton :loading="adding" @click="addAll">Add to class list</BaseButton>
@@ -190,7 +225,9 @@ onMounted(load)
             <span class="idx">{{ index + 1 }}</span>
             <span class="who">
               <span class="name">{{ student.full_name }}</span>
-              <span class="faint matric">{{ student.matric_number }}</span>
+              <span class="faint matric">
+                {{ student.matric_number }}<template v-if="dept(student.matric_number)"> · {{ dept(student.matric_number) }}</template>
+              </span>
             </span>
             <span class="badge" :class="student.group_id ? 'brand' : ''">
               {{ student.group_id ? groupName(student.group_id) : 'Unassigned' }}
