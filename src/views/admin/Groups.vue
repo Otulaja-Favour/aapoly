@@ -23,20 +23,8 @@ const loading = ref(true)
 const publishing = ref(false)
 const preview = ref([])
 
-const mode = ref('count') // count | size
-const groupCount = ref(5)
-const groupSize = ref(4)
-
-const value = computed(() => (mode.value === 'count' ? groupCount.value : groupSize.value))
-
-// v-model cannot bind a ternary, so we expose a writable computed for the input.
-const amount = computed({
-  get: () => value.value,
-  set: (next) => {
-    if (mode.value === 'count') groupCount.value = next
-    else groupSize.value = next
-  }
-})
+// One group per project: the catalogue size decides how many groups exist.
+const groupTotal = computed(() => projects.value.length)
 
 const savedMembers = (id) => students.value.filter((s) => s.group_id === id)
 const savedProjectName = (id) => projects.value.find((p) => p.id === id)?.name || 'No project'
@@ -64,9 +52,11 @@ function generate() {
     toast.error('Add at least two students before generating groups.')
     return
   }
-  const options =
-    mode.value === 'count' ? { groupCount: Number(groupCount.value) } : { groupSize: Number(groupSize.value) }
-  preview.value = buildGroups(students.value, projects.value, options)
+  if (!groupTotal.value) {
+    toast.error('No projects available to form groups from.')
+    return
+  }
+  preview.value = buildGroups(students.value, projects.value, { groupCount: groupTotal.value })
   toast.info(`Shuffled ${students.value.length} students into ${preview.value.length} groups.`)
 }
 
@@ -109,46 +99,19 @@ onMounted(load)
         </p>
       </div>
 
-      <div class="controls-row">
-        <div class="segmented">
-          <button
-            type="button"
-            :class="{ active: mode === 'count' }"
-            @click="mode = 'count'"
-          >
-            Number of groups
-          </button>
-          <button type="button" :class="{ active: mode === 'size' }" @click="mode = 'size'">
-            Students per group
-          </button>
-        </div>
+      <p class="muted hint">
+        Every project gets its own group, so {{ groupTotal }} project{{
+          groupTotal === 1 ? '' : 's'
+        }}
+        create{{ groupTotal === 1 ? 's' : '' }} {{ groupTotal }} group{{ groupTotal === 1 ? '' : 's' }}.
+        Students are shuffled and split as evenly as possible, one project per group.
+      </p>
 
-        <div class="field amount">
-          <label>{{ mode === 'count' ? 'How many groups?' : 'Students per group' }}</label>
-          <input
-            v-model.number="amount"
-            class="input"
-            type="number"
-            min="1"
-            :max="mode === 'count' ? students.length : 50"
-          />
-        </div>
-
-        <div class="controls-actions">
-          <BaseButton :disabled="loading" @click="generate">
-            {{ preview.length ? 'Re-shuffle' : 'Generate groups' }}
-          </BaseButton>
-        </div>
+      <div class="controls-actions">
+        <BaseButton :disabled="loading || !students.length" @click="generate">
+          {{ preview.length ? 'Re-shuffle' : 'Generate groups' }}
+        </BaseButton>
       </div>
-
-      <p v-if="mode === 'count'" class="muted hint">
-        {{ value }} group{{ value === 1 ? '' : 's' }} · about
-        {{ students.length ? Math.ceil(students.length / Math.max(value, 1)) : 0 }} students each
-      </p>
-      <p v-else class="muted hint">
-        About {{ students.length ? Math.ceil(students.length / Math.max(value, 1)) : 0 }} groups of
-        up to {{ value }}
-      </p>
     </section>
 
     <Transition name="fade">
@@ -229,40 +192,6 @@ onMounted(load)
 .controls-head p {
   margin: 2px 0 0;
   font-size: 13.5px;
-}
-
-.controls-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.segmented {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: var(--radius);
-  background: var(--surface-2);
-}
-.segmented button {
-  padding: 9px 14px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--muted);
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-}
-.segmented button.active {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow-sm);
-}
-
-.amount {
-  width: 190px;
 }
 
 .controls-actions {
@@ -383,10 +312,6 @@ onMounted(load)
 
 @media (max-width: 640px) {
   .controls-actions {
-    margin-left: 0;
-    width: 100%;
-  }
-  .amount {
     width: 100%;
   }
 }

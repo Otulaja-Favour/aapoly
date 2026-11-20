@@ -54,7 +54,9 @@ export async function deleteStudent(id) {
 }
 
 export async function clearStudents() {
-  return unwrap(await afribase.from('class_students').delete().neq('id', ''))
+  // PostgREST requires a filter on DELETE. `neq('id', '')` breaks on uuid columns
+  // (empty string can't be cast), so we use `id IS NOT NULL`, which matches all.
+  return unwrap(await afribase.from('class_students').delete().not('id', 'is', null))
 }
 
 export async function setStudentGroup(studentId, groupId) {
@@ -75,7 +77,9 @@ export async function listGroups() {
 }
 
 export async function clearGroups() {
-  return unwrap(await afribase.from('class_groups').delete().neq('id', ''))
+  // PostgREST requires a filter on DELETE. `neq('id', '')` breaks on uuid columns
+  // (empty string can't be cast), so we use `id IS NOT NULL`, which matches all.
+  return unwrap(await afribase.from('class_groups').delete().not('id', 'is', null))
 }
 
 export async function createGroup({ name, project_id }) {
