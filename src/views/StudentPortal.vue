@@ -1,13 +1,53 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import BaseButton from '@/components/BaseButton.vue'
 import ConfigNotice from '@/components/ConfigNotice.vue'
+import Logo from '@/components/Logo.vue'
 import { findStudentByMatric, listGroups, listProjects, listStudents } from '@/lib/api'
 import { toast } from '@/lib/toast'
 
 const matric = ref('')
 const loading = ref(false)
 const searched = ref(false)
+
+const MATRIC_GROUPS = [2, 3, 2, 4]
+
+/** FH-XXX-25-0001 — uppercases the input and inserts the hyphens as they type. */
+function formatMatric(value) {
+  const clean = String(value).toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const parts = []
+  let index = 0
+  for (const size of MATRIC_GROUPS) {
+    if (index >= clean.length) break
+    parts.push(clean.slice(index, index + size))
+    index += size
+  }
+  if (index < clean.length) parts.push(clean.slice(index))
+  return parts.join('-')
+}
+
+async function onMatricInput(event) {
+  const el = event.target
+  const caret = el.selectionStart ?? el.value.length
+  const typedBefore = (el.value.slice(0, caret).match(/[A-Za-z0-9]/g) || []).length
+  const formatted = formatMatric(el.value)
+
+  matric.value = formatted
+  await nextTick()
+
+  if (el.value !== formatted) el.value = formatted
+
+  let seen = 0
+  let position = formatted.length
+  for (let i = 0; i < formatted.length; i += 1) {
+    if (seen === typedBefore) {
+      position = i
+      break
+    }
+    if (/[A-Z0-9]/.test(formatted[i])) seen += 1
+  }
+  el.setSelectionRange(position, position)
+}
 
 const student = ref(null)
 const allGroups = ref([])
@@ -66,10 +106,13 @@ function reset() {
     <header class="nav">
       <div class="wrap nav-inner">
         <RouterLink class="brand" to="/">
-          <span class="brand-mark">A</span>
-          <span class="brand-name">AAPoly</span>
+          <Logo />
         </RouterLink>
-        <RouterLink class="back" to="/">← Back home</RouterLink>
+        <RouterLink class="back" to="/" aria-label="Back home">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+        </RouterLink>
       </div>
     </header>
 
@@ -88,10 +131,12 @@ function reset() {
           <label for="matric">Matric number</label>
           <input
             id="matric"
-            v-model="matric"
+            :value="matric"
             class="input"
-            placeholder="e.g. AAP/2021/0456"
+            placeholder="e.g. FH-SWD-25-0001"
             autocomplete="off"
+            spellcheck="false"
+            @input="onMatricInput"
           />
         </div>
         <BaseButton type="submit" :loading="loading">See my group</BaseButton>
@@ -127,9 +172,17 @@ function reset() {
                 </span>
                 <span v-for="tag in myGroup.project.tags || []" :key="tag" class="badge">{{ tag }}</span>
               </div>
-              <p v-if="myGroup.project && myGroup.project.repo_folder" class="repo">
-                Starter code: <code>{{ myGroup.project.repo_folder }}</code>
-              </p>
+              <a
+                v-if="myGroup.project"
+                :href="`/downloads/${myGroup.project.slug}.zip`"
+                class="download-btn"
+                :download="`${myGroup.project.slug}.zip`"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                </svg>
+                Download project files
+              </a>
             </article>
 
             <article class="card panel">
@@ -253,27 +306,18 @@ function reset() {
   align-items: center;
   gap: 10px;
 }
-.brand-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: var(--brand);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-family: var(--font-heading);
-  font-weight: 700;
-}
-.brand-name {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 17px;
-}
 .back {
-  font-size: 14.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
   color: var(--muted);
+  transition: background 0.15s ease, color 0.15s ease;
 }
 .back:hover {
+  background: var(--surface-2);
   color: var(--text);
 }
 
@@ -353,15 +397,24 @@ function reset() {
   gap: 8px;
 }
 
-.repo {
-  font-size: 13.5px;
+.download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 11px 18px;
+  border-radius: var(--radius);
+  background: var(--brand);
+  color: var(--brand-contrast);
+  font-weight: 600;
+  font-size: 14.5px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s ease;
 }
-.repo code,
-code {
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: var(--surface-2);
-  font-size: 12.5px;
+.download-btn:hover {
+  background: var(--brand-strong);
 }
 
 .block {

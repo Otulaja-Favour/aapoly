@@ -1,5 +1,6 @@
 <script setup>
 import ConfigNotice from '@/components/ConfigNotice.vue'
+import Logo from '@/components/Logo.vue'
 </script>
 
 <template>
@@ -7,12 +8,10 @@ import ConfigNotice from '@/components/ConfigNotice.vue'
     <header class="nav">
       <div class="wrap nav-inner">
         <div class="brand">
-          <span class="brand-mark">A</span>
-          <span class="brand-name">AAPoly</span>
+          <Logo />
         </div>
         <nav class="nav-links">
           <RouterLink class="nav-link" to="/student">Student portal</RouterLink>
-          <RouterLink class="btn btn-primary" to="/admin/login">Admin</RouterLink>
         </nav>
       </div>
     </header>
@@ -31,16 +30,6 @@ import ConfigNotice from '@/components/ConfigNotice.vue'
       </section>
 
       <section class="paths">
-        <RouterLink class="path card" to="/admin/login">
-          <span class="path-icon">AD</span>
-          <h3>I'm the admin</h3>
-          <p class="muted">
-            Upload the class list, generate random groups, and assign the projects. Manage
-            everything from the dashboard.
-          </p>
-          <span class="path-cta">Open admin dashboard →</span>
-        </RouterLink>
-
         <RouterLink class="path card" to="/student">
           <span class="path-icon alt">ST</span>
           <h3>I'm a student</h3>
@@ -93,24 +82,6 @@ import ConfigNotice from '@/components/ConfigNotice.vue'
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.brand-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: var(--brand);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-family: var(--font-heading);
-  font-weight: 700;
-}
-
-.brand-name {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 17px;
 }
 
 .nav-links {

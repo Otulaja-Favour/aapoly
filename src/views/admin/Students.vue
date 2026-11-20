@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import BaseButton from '@/components/BaseButton.vue'
 import ConfigNotice from '@/components/ConfigNotice.vue'
+import ConfirmModal from '@/components/ConfirmModal.vue'
 import { addStudents, clearStudents, deleteStudent, listGroups, listStudents } from '@/lib/api'
 import { toast } from '@/lib/toast'
 
@@ -13,6 +14,8 @@ const loading = ref(true)
 const adding = ref(false)
 const clearing = ref(false)
 const confirmClear = ref(false)
+const pendingDelete = ref(null)
+const deleting = ref(false)
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
@@ -102,13 +105,19 @@ async function addAll() {
   }
 }
 
-async function remove(student) {
+async function remove() {
+  const student = pendingDelete.value
+  if (!student) return
+  deleting.value = true
   try {
     await deleteStudent(student.id)
     students.value = students.value.filter((s) => s.id !== student.id)
+    pendingDelete.value = null
     toast.info(`Removed ${student.full_name}.`)
   } catch (err) {
     toast.error(err.message || 'Could not remove student.')
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -170,16 +179,6 @@ onMounted(load)
           </div>
         </div>
 
-        <div v-if="confirmClear" class="confirm">
-          <span>Remove all {{ students.length }} students? This can't be undone.</span>
-          <div class="confirm-actions">
-            <BaseButton variant="danger" size="sm" :loading="clearing" @click="clearAll">
-              Yes, clear
-            </BaseButton>
-            <BaseButton variant="ghost" size="sm" @click="confirmClear = false">Cancel</BaseButton>
-          </div>
-        </div>
-
         <p v-if="loading" class="muted pad">Loading…</p>
         <p v-else-if="!students.length" class="muted pad">
           No students yet. Paste your class list on the left.
@@ -196,11 +195,37 @@ onMounted(load)
             <span class="badge" :class="student.group_id ? 'brand' : ''">
               {{ student.group_id ? groupName(student.group_id) : 'Unassigned' }}
             </span>
-            <button type="button" class="del" title="Remove" @click="remove(student)">✕</button>
+            <button type="button" class="del" title="Remove" @click="pendingDelete = student">
+              ✕
+            </button>
           </li>
         </ul>
       </section>
     </div>
+
+    <ConfirmModal
+      :open="Boolean(pendingDelete)"
+      title="Remove student?"
+      :message="
+        pendingDelete
+          ? `${pendingDelete.full_name} (${pendingDelete.matric_number}) will be removed from the class list. This can't be undone.`
+          : ''
+      "
+      confirm-label="Yes, remove"
+      :loading="deleting"
+      @confirm="remove"
+      @cancel="pendingDelete = null"
+    />
+
+    <ConfirmModal
+      :open="confirmClear"
+      title="Clear the class list?"
+      :message="`All ${students.length} students will be removed. This can't be undone.`"
+      confirm-label="Yes, clear all"
+      :loading="clearing"
+      @confirm="clearAll"
+      @cancel="confirmClear = false"
+    />
   </div>
 </template>
 
@@ -261,24 +286,6 @@ onMounted(load)
 }
 .search {
   width: 210px;
-}
-
-.confirm {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 12px 14px;
-  margin-bottom: 12px;
-  border-radius: var(--radius);
-  background: var(--danger-soft);
-  color: #9b1c1f;
-  font-size: 13.5px;
-}
-.confirm-actions {
-  display: flex;
-  gap: 8px;
 }
 
 .pad {

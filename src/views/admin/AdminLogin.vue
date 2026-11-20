@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/components/BaseButton.vue'
 import ConfigNotice from '@/components/ConfigNotice.vue'
+import Logo from '@/components/Logo.vue'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from '@/lib/toast'
 
@@ -20,7 +21,7 @@ async function submit() {
   try {
     await auth.signIn({ passcode: passcode.value })
     toast.success('Welcome back.')
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/admin'
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/panel'
     router.replace(redirect)
   } catch (err) {
     toast.error(err.message || 'Sign in failed.')
@@ -35,8 +36,7 @@ async function submit() {
 
       <div class="card panel">
         <RouterLink class="brand" to="/">
-          <span class="brand-mark">A</span>
-          <span class="brand-name">AAPoly</span>
+          <Logo />
         </RouterLink>
 
         <h1>Admin sign in</h1>
@@ -93,22 +93,6 @@ async function submit() {
   align-items: center;
   gap: 10px;
   margin-bottom: 6px;
-}
-.brand-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: var(--brand);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-family: var(--font-heading);
-  font-weight: 700;
-}
-.brand-name {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 17px;
 }
 
 h1 {

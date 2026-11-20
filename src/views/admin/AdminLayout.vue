@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from '@/lib/toast'
+import Logo from '@/components/Logo.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -50,9 +51,8 @@ async function logout() {
     <div v-if="drawerOpen" class="scrim" @click="drawerOpen = false" />
 
     <aside class="sidebar" :class="{ open: drawerOpen }">
-      <RouterLink class="side-brand" to="/admin" @click="drawerOpen = false">
-        <span class="brand-mark">A</span>
-        <span class="brand-name">AAPoly</span>
+      <RouterLink class="side-brand" to="/panel" @click="drawerOpen = false">
+        <Logo height="36px" />
       </RouterLink>
 
       <nav class="side-nav">
@@ -123,22 +123,6 @@ async function logout() {
   align-items: center;
   gap: 10px;
   padding: 4px 8px 20px;
-}
-.brand-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: var(--brand);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-family: var(--font-heading);
-  font-weight: 700;
-}
-.brand-name {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 17px;
 }
 
 .side-nav {

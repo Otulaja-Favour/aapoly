@@ -5,12 +5,12 @@ const routes = [
   { path: '/', name: 'home', component: () => import('@/views/Home.vue') },
   { path: '/student', name: 'student', component: () => import('@/views/StudentPortal.vue') },
   {
-    path: '/admin/login',
+    path: '/panel/login',
     name: 'admin-login',
     component: () => import('@/views/admin/AdminLogin.vue')
   },
   {
-    path: '/admin',
+    path: '/panel',
     component: () => import('@/views/admin/AdminLayout.vue'),
     meta: { requiresAuth: true },
     children: [
