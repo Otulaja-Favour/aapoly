@@ -225,27 +225,27 @@ function download() {
 }
 .facet.top {
   width: 255px;
-  background: #0b4d20;
+  background: #0b5414;
   clip-path: polygon(0 0, 100% 0, 0 57%);
 }
 .facet.pale {
   width: 465px;
-  background: #f4f2ed;
+  background: #f6f4f0;
   clip-path: polygon(55% 0, 100% 0, 55% 43%, 34% 57%, 28% 57%);
 }
 .facet.lower {
   width: 340px;
-  background: #1a7131;
+  background: #176b2d;
   clip-path: polygon(0 57%, 84% 100%, 0 100%);
 }
 .facet.center {
   width: 335px;
-  background: #0d572b;
+  background: #0e542c;
   clip-path: polygon(0 57%, 100% 70%, 61% 91%, 85% 100%, 57% 100%);
 }
 .facet.bottom {
   width: 360px;
-  background: #23813b;
+  background: #1d7432;
   clip-path: polygon(0 66%, 78% 100%, 0 100%);
 }
 
