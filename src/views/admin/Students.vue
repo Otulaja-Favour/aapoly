@@ -3,17 +3,20 @@ import { computed, onMounted, ref } from 'vue'
 import BaseButton from '@/components/BaseButton.vue'
 import ConfigNotice from '@/components/ConfigNotice.vue'
 import ConfirmModal from '@/components/ConfirmModal.vue'
-import { addStudents, clearStudents, deleteStudent, listGroups, listStudents } from '@/lib/api'
+import { addStudents, clearStudents, deleteStudent, listGroups, listStudents, markPaidByMatric, updateStudent } from '@/lib/api'
 import { departmentFromMatric } from '@/lib/departments'
 import { toast } from '@/lib/toast'
 
 const raw = ref('')
+const paidRaw = ref('')
+const paidMethod = ref('company')
 const students = ref([])
 const groups = ref([])
 const search = ref('')
 const loading = ref(true)
 const adding = ref(false)
 const clearing = ref(false)
+const markingPaid = ref(false)
 const confirmClear = ref(false)
 const pendingDelete = ref(null)
 const deleting = ref(false)
@@ -169,6 +172,54 @@ async function clearAll() {
   }
 }
 
+/** Pulls every matric-shaped token out of pasted text (handles messy names/typos). */
+function extractMatrics(text) {
+  return [...String(text).toUpperCase().matchAll(/[A-Z]{2,6}[- ][A-Z0-9]{1,6}[- ][0-9]{1,6}[- ][0-9]{1,6}/g)]
+    .map((m) => m[0].replace(/\s+/g, '-'))
+}
+
+async function markPaid() {
+  const matrics = extractMatrics(paidRaw.value)
+  if (!matrics.length) {
+    toast.error('No matric numbers found in that text.')
+    return
+  }
+  markingPaid.value = true
+  try {
+    const updated = await markPaidByMatric(matrics, paidMethod.value)
+    await load()
+    paidRaw.value = ''
+    toast.success(`Marked ${updated.length || matrics.length} student${(updated.length || matrics.length) === 1 ? '' : 's'} as paid.`)
+  } catch (err) {
+    toast.error(err.message || 'Could not mark payments.')
+  } finally {
+    markingPaid.value = false
+  }
+}
+
+async function togglePaid(student) {
+  const next = !student.has_paid
+  try {
+    await updateStudent(student.id, { has_paid: next, payment_method: next ? 'manual' : null })
+    student.has_paid = next
+    student.payment_method = next ? 'manual' : null
+    toast.info(`${student.full_name.split(' ')[0]} ${next ? 'marked paid' : 'unpaid'}.`)
+  } catch (err) {
+    toast.error(err.message || 'Could not update payment.')
+  }
+}
+
+async function toggleCertificate(student) {
+  const next = !student.certificate_approved
+  try {
+    await updateStudent(student.id, { certificate_approved: next })
+    student.certificate_approved = next
+    toast.info(`Certificate ${next ? 'approved' : 'revoked'} for ${student.full_name.split(' ')[0]}.`)
+  } catch (err) {
+    toast.error(err.message || 'Could not update certificate.')
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -195,11 +246,39 @@ onMounted(load)
         </div>
       </section>
 
+      <section class="card pay">
+        <h3>Mark payments</h3>
+        <p class="muted">
+          Paste the list of matric numbers that paid. It picks out every matric-shaped code, so
+          names and typos around it are ignored.
+        </p>
+        <div class="pay-method">
+          <label>
+            <input type="radio" v-model="paidMethod" value="company" />
+            <span>Company account</span>
+          </label>
+          <label>
+            <input type="radio" v-model="paidMethod" value="wunmi" />
+            <span>Paid to Wunmi</span>
+          </label>
+        </div>
+        <textarea
+          v-model="paidRaw"
+          class="textarea"
+          placeholder="FH-SWD-25-0026&#10;FH-SWD-25-0040&#10;or paste the whole message…"
+        />
+        <div class="add-actions">
+          <BaseButton variant="secondary" :loading="markingPaid" @click="markPaid">
+            Mark as paid ({{ extractMatrics(paidRaw).length }})
+          </BaseButton>
+        </div>
+      </section>
+
       <section class="card roster">
         <div class="roster-head">
           <div>
             <h3>Class list</h3>
-            <p class="muted">{{ students.length }} student{{ students.length === 1 ? '' : 's' }}</p>
+            <p class="muted">{{ students.length }} student{{ students.length === 1 ? '' : 's' }} · {{ students.filter((s) => s.has_paid).length }} paid · {{ students.filter((s) => s.certificate_approved).length }} certificates</p>
           </div>
           <div class="roster-tools">
             <input v-model="search" class="input search" placeholder="Search name or matric…" />
@@ -229,8 +308,28 @@ onMounted(load)
                 {{ student.matric_number }}<template v-if="dept(student.matric_number)"> · {{ dept(student.matric_number) }}</template>
               </span>
             </span>
-            <span class="badge" :class="student.group_id ? 'brand' : ''">
-              {{ student.group_id ? groupName(student.group_id) : 'Unassigned' }}
+            <span class="badges">
+              <span class="badge" :class="student.group_id ? 'brand' : 'faint-badge'">
+                {{ student.group_id ? groupName(student.group_id) : 'Unassigned' }}
+              </span>
+              <button
+                type="button"
+                class="badge toggle"
+                :class="student.has_paid ? 'success' : 'warn'"
+                :title="student.has_paid ? `Paid (${student.payment_method || 'manual'}) — click to undo` : 'Unpaid — click to mark paid'"
+                @click="togglePaid(student)"
+              >
+                {{ student.has_paid ? 'Paid' : 'Unpaid' }}
+              </button>
+              <button
+                type="button"
+                class="badge toggle"
+                :class="student.certificate_approved ? 'success' : 'faint-badge'"
+                :title="student.certificate_approved ? 'Certificate approved — click to revoke' : 'Approve certificate (for last-year / no-project students)'"
+                @click="toggleCertificate(student)"
+              >
+                {{ student.certificate_approved ? 'Cert ✓' : 'Cert' }}
+              </button>
             </span>
             <button type="button" class="del" title="Remove" @click="pendingDelete = student">
               ✕
@@ -296,6 +395,57 @@ onMounted(load)
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.pay {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pay h3 {
+  font-size: 18px;
+}
+.pay p {
+  margin: 0;
+  font-size: 14px;
+}
+.pay-method {
+  display: flex;
+  gap: 18px;
+}
+.pay-method label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.badge.toggle {
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+}
+.badge.faint-badge {
+  background: var(--surface-2);
+  color: var(--faint);
+}
+.badge.warn {
+  background: var(--warning-soft, #fff4e0);
+  color: var(--warning, #b26a00);
+}
+.badge.success {
+  background: var(--success-soft, #e3f7e8);
+  color: var(--success, #1a7f37);
 }
 
 .roster {

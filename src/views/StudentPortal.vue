@@ -58,6 +58,12 @@ const myGroup = computed(
 )
 const teammates = computed(() => myGroup.value?.members || [])
 
+// Certificate is ready when the admin manually approved it (last-year / no-project
+// students) or when the student's group project was marked complete.
+const certificateReady = computed(
+  () => Boolean(student.value?.certificate_approved || myGroup.value?.project_approved)
+)
+
 async function lookup() {
   const query = matric.value.trim()
   if (!query) {
@@ -161,6 +167,24 @@ function reset() {
             <p class="muted">{{ student.full_name }} · {{ student.matric_number }}</p>
           </div>
 
+          <div class="status-row">
+            <span class="badge" :class="student.has_paid ? 'success' : 'warn'">
+              {{ student.has_paid ? 'Payment received' : 'Payment pending' }}
+            </span>
+            <RouterLink
+              v-if="certificateReady"
+              :to="{ name: 'certificate', params: { matric: student.matric_number } }"
+              class="cert-btn"
+              target="_blank"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <path d="M14 2v6h6M9 13h6M9 17h6" />
+              </svg>
+              Download my certificate
+            </RouterLink>
+          </div>
+
           <div class="grid">
             <article class="card panel">
               <span class="badge brand">Your project</span>
@@ -209,6 +233,23 @@ function reset() {
             You're on the class list, but your group hasn't been published yet. Meanwhile you can
             see all the projects below.
           </p>
+          <div class="status-row">
+            <span class="badge" :class="student.has_paid ? 'success' : 'warn'">
+              {{ student.has_paid ? 'Payment received' : 'Payment pending' }}
+            </span>
+            <RouterLink
+              v-if="certificateReady"
+              :to="{ name: 'certificate', params: { matric: student.matric_number } }"
+              class="cert-btn"
+              target="_blank"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <path d="M14 2v6h6M9 13h6M9 17h6" />
+              </svg>
+              Download my certificate
+            </RouterLink>
+          </div>
         </section>
 
         <section class="block">
@@ -368,6 +409,38 @@ function reset() {
 }
 .mine-head p {
   margin: 4px 0 0;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.badge.warn {
+  background: var(--warning-soft, #fff4e0);
+  color: var(--warning, #b26a00);
+}
+.badge.success {
+  background: var(--success-soft, #e3f7e8);
+  color: var(--success, #1a7f37);
+}
+.cert-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  background: var(--brand);
+  color: var(--brand-contrast);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background 0.15s ease;
+}
+.cert-btn:hover {
+  background: var(--brand-strong);
 }
 
 .grid {

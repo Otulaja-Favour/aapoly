@@ -9,7 +9,8 @@ import {
   listGroups,
   listProjects,
   listStudents,
-  seedProjects
+  seedProjects,
+  setGroupProjectApproved
 } from '@/lib/api'
 import { buildGroups } from '@/lib/grouping'
 import { PROJECTS } from '@/data/projects'
@@ -21,10 +22,12 @@ const savedGroups = ref([])
 
 const loading = ref(true)
 const publishing = ref(false)
+const shufflingUnassigned = ref(false)
 const preview = ref([])
 
 // One group per project: the catalogue size decides how many groups exist.
 const groupTotal = computed(() => projects.value.length)
+const unassigned = computed(() => students.value.filter((s) => !s.group_id))
 
 const savedMembers = (id) => students.value.filter((s) => s.group_id === id)
 const savedProjectName = (id) => projects.value.find((p) => p.id === id)?.name || 'No project'
@@ -95,6 +98,59 @@ async function publish() {
   }
 }
 
+/**
+ * Distributes students without a group into the already-published groups,
+ * balancing sizes as evenly as possible. Useful when extra matrics were added
+ * after the initial publish.
+ */
+async function shuffleUnassigned() {
+  if (!unassigned.value.length) {
+    toast.info('No unassigned students.')
+    return
+  }
+  if (!savedGroups.value.length) {
+    toast.error('Publish groups first, then shuffle unassigned students into them.')
+    return
+  }
+  shufflingUnassigned.value = true
+  try {
+    const pool = [...unassigned.value].sort(() => Math.random() - 0.5)
+    const groups = [...savedGroups.value].sort(
+      (a, b) => savedMembers(a.id).length - savedMembers(b.id).length
+    )
+    // Round-robin into groups ordered by current size (smallest first).
+    const assignments = groups.map(() => [])
+    pool.forEach((student, i) => assignments[i % groups.length].push(student.id))
+
+    await Promise.all(
+      groups.map((group, i) =>
+        assignments[i].length ? assignStudentsToGroup(assignments[i], group.id) : null
+      )
+    )
+    await load()
+    toast.success(`Placed ${pool.length} unassigned student${pool.length === 1 ? '' : 's'} into groups.`)
+  } catch (err) {
+    toast.error(err.message || 'Could not shuffle unassigned students.')
+  } finally {
+    shufflingUnassigned.value = false
+  }
+}
+
+async function toggleProjectApproved(group) {
+  const next = !group.project_approved
+  try {
+    await setGroupProjectApproved(group.id, next)
+    group.project_approved = next
+    toast.info(
+      next
+        ? `${group.name} project marked complete — members can download certificates.`
+        : `${group.name} project completion revoked.`
+    )
+  } catch (err) {
+    toast.error(err.message || 'Could not update project status.')
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -122,6 +178,14 @@ onMounted(load)
       <div class="controls-actions">
         <BaseButton :disabled="loading || !students.length" @click="generate">
           {{ preview.length ? 'Re-shuffle' : 'Generate groups' }}
+        </BaseButton>
+        <BaseButton
+          variant="secondary"
+          :loading="shufflingUnassigned"
+          :disabled="!unassigned.length || !savedGroups.length"
+          @click="shuffleUnassigned"
+        >
+          Shuffle unassigned ({{ unassigned.length }})
         </BaseButton>
       </div>
     </section>
@@ -170,7 +234,18 @@ onMounted(load)
         <article v-for="group in savedGroups" :key="group.id" class="group">
           <div class="group-head">
             <h4>{{ group.name }}</h4>
-            <span class="badge brand">{{ savedProjectName(group.project_id) }}</span>
+            <div class="group-badges">
+              <span class="badge brand">{{ savedProjectName(group.project_id) }}</span>
+              <button
+                type="button"
+                class="badge toggle"
+                :class="group.project_approved ? 'success' : 'faint-badge'"
+                :title="group.project_approved ? 'Project complete — click to revoke' : 'Mark project complete (unlocks certificates)'"
+                @click="toggleProjectApproved(group)"
+              >
+                {{ group.project_approved ? 'Project complete ✓' : 'Mark complete' }}
+              </button>
+            </div>
           </div>
           <ul>
             <li v-for="member in savedMembers(group.id)" :key="member.id">
@@ -264,6 +339,25 @@ onMounted(load)
 }
 .group-head h4 {
   font-size: 16px;
+}
+.group-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.badge.toggle {
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+}
+.badge.faint-badge {
+  background: var(--surface-2);
+  color: var(--faint);
+}
+.badge.success {
+  background: var(--success-soft, #e3f7e8);
+  color: var(--success, #1a7f37);
 }
 
 .group ul {

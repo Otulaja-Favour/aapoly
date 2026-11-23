@@ -5,6 +5,11 @@ const routes = [
   { path: '/', name: 'home', component: () => import('@/views/Home.vue') },
   { path: '/student', name: 'student', component: () => import('@/views/StudentPortal.vue') },
   {
+    path: '/certificate/:matric',
+    name: 'certificate',
+    component: () => import('@/views/Certificate.vue')
+  },
+  {
     path: '/panel/login',
     name: 'admin-login',
     component: () => import('@/views/admin/AdminLogin.vue')
@@ -17,6 +22,7 @@ const routes = [
       { path: '', name: 'admin-dashboard', component: () => import('@/views/admin/Dashboard.vue') },
       { path: 'students', name: 'admin-students', component: () => import('@/views/admin/Students.vue') },
       { path: 'groups', name: 'admin-groups', component: () => import('@/views/admin/Groups.vue') },
+      { path: 'attendance', name: 'admin-attendance', component: () => import('@/views/admin/Attendance.vue') },
       { path: 'projects', name: 'admin-projects', component: () => import('@/views/admin/Projects.vue') }
     ]
   },
