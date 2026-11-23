@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import BaseButton from '@/components/BaseButton.vue'
 import ConfigNotice from '@/components/ConfigNotice.vue'
 import { listAttendance, listStudents, setAttendance } from '@/lib/api'
-import { departmentFromMatric, isLastYear } from '@/lib/departments'
+import { compareMatricNumbers, departmentFromMatric, isLastYear } from '@/lib/departments'
 import { toast } from '@/lib/toast'
 
 const WEEKS = Array.from({ length: 12 }, (_, i) => i + 1)
@@ -38,7 +38,9 @@ const presentCount = (studentId) =>
 async function load() {
   try {
     const [s, a] = await Promise.all([listStudents(), listAttendance()])
-    students.value = (s || []).slice().sort((a, b) => a.full_name.localeCompare(b.full_name))
+    students.value = (s || [])
+      .slice()
+      .sort((a, b) => compareMatricNumbers(a.matric_number, b.matric_number))
     attendance.value = a || []
   } catch (err) {
     toast.error(err.message || 'Could not load attendance.')

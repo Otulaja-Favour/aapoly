@@ -4,7 +4,7 @@ import BaseButton from '@/components/BaseButton.vue'
 import ConfigNotice from '@/components/ConfigNotice.vue'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import { addStudents, clearStudents, deleteStudent, listGroups, listStudents, markPaidByMatric, updateStudent } from '@/lib/api'
-import { departmentFromMatric, isLastYear } from '@/lib/departments'
+import { compareMatricNumbers, departmentFromMatric, isLastYear } from '@/lib/departments'
 import { toast } from '@/lib/toast'
 
 const raw = ref('')
@@ -41,7 +41,9 @@ const dept = (matricNumber) => departmentFromMatric(matricNumber)
 async function load() {
   try {
     const [s, g] = await Promise.all([listStudents(), listGroups()])
-    students.value = (s || []).slice().sort((a, b) => a.full_name.localeCompare(b.full_name))
+    students.value = (s || [])
+      .slice()
+      .sort((a, b) => compareMatricNumbers(a.matric_number, b.matric_number))
     groups.value = g || []
   } catch (err) {
     toast.error(err.message || 'Could not load students.')

@@ -28,3 +28,11 @@ export function departmentFromMatric(matricNumber) {
 export function isLastYear(matricNumber) {
   return String(matricNumber || '').toUpperCase().startsWith('HND')
 }
+
+/** Natural ascending order keeps numeric matric segments in numeric order. */
+export function compareMatricNumbers(a, b) {
+  return String(a || '').localeCompare(String(b || ''), undefined, {
+    numeric: true,
+    sensitivity: 'base'
+  })
+}
