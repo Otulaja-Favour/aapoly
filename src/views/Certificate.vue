@@ -224,34 +224,34 @@ function download() {
   inset: 0;
 }
 .facet.top {
-  width: 275px;
+  width: 255px;
   background: #0b4d20;
   clip-path: polygon(0 0, 100% 0, 0 57%);
 }
 .facet.pale {
-  width: 390px;
+  width: 465px;
   background: #f4f2ed;
-  clip-path: polygon(64% 0, 100% 0, 62% 43%, 43% 57%, 32% 57%);
+  clip-path: polygon(55% 0, 100% 0, 55% 43%, 34% 57%, 28% 57%);
 }
 .facet.lower {
-  width: 320px;
+  width: 340px;
   background: #1a7131;
-  clip-path: polygon(0 57%, 82% 100%, 0 100%);
+  clip-path: polygon(0 57%, 84% 100%, 0 100%);
 }
 .facet.center {
-  width: 360px;
+  width: 335px;
   background: #0d572b;
-  clip-path: polygon(0 57%, 100% 70%, 64% 91%, 80% 100%, 59% 100%);
+  clip-path: polygon(0 57%, 100% 70%, 61% 91%, 85% 100%, 57% 100%);
 }
 .facet.bottom {
-  width: 250px;
+  width: 360px;
   background: #23813b;
-  clip-path: polygon(0 66%, 75% 100%, 0 100%);
+  clip-path: polygon(0 66%, 78% 100%, 0 100%);
 }
 
 .gold-seal {
   position: absolute;
-  top: 145px;
+  top: 150px;
   left: 52px;
   width: 148px;
   height: 148px;
@@ -259,57 +259,61 @@ function download() {
 
 .logos {
   position: absolute;
-  top: 46px;
+  top: 56px;
   left: 65%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 36px;
+  gap: 30px;
 }
 .logo {
-  height: 64px;
+  height: 98px;
   width: auto;
   object-fit: contain;
 }
 
 .title {
   position: absolute;
-  top: 150px;
-  left: 360px;
-  right: 60px;
+  top: 186px;
+  left: 380px;
+  right: 50px;
   text-align: center;
   font-size: 52px;
   letter-spacing: 8px;
   color: #0b4d2e;
   margin: 0;
   font-weight: 700;
+  font-family: Georgia, 'Times New Roman', serif;
 }
 .subtitle {
   position: absolute;
-  top: 212px;
-  left: 360px;
-  right: 60px;
+  top: 252px;
+  left: 380px;
+  right: 50px;
   text-align: center;
-  font-size: 20px;
+  font-size: 27px;
   letter-spacing: 6px;
   color: #0b4d2e;
   margin: 0;
+  font-family: Arial, sans-serif;
 }
 
 .certify {
   position: absolute;
-  top: 280px;
-  left: 360px;
-  right: 60px;
+  top: 302px;
+  left: 380px;
+  right: 50px;
   text-align: center;
   font-size: 16px;
-  color: #555;
+  color: #456c5a;
   font-style: italic;
+  margin: 0;
+  font-family: Arial, sans-serif;
 }
 
 .name {
   position: absolute;
-  top: 340px;
+  top: 354px;
   left: 360px;
   right: 60px;
   text-align: center;
@@ -321,50 +325,56 @@ function download() {
 }
 .name-line {
   position: absolute;
-  top: 400px;
-  left: 440px;
-  right: 140px;
+  top: 414px;
+  left: 385px;
+  right: 110px;
   height: 1px;
   background: #0b4d2e;
 }
 .matric {
   position: absolute;
-  top: 410px;
-  left: 360px;
-  right: 60px;
+  top: 420px;
+  left: 380px;
+  right: 50px;
   text-align: center;
   font-size: 14px;
   color: #777;
   letter-spacing: 1px;
+  margin: 0;
 }
 
 .body {
   position: absolute;
   top: 460px;
-  left: 400px;
-  right: 100px;
+  left: 405px;
+  right: 145px;
   text-align: center;
-  font-size: 15px;
-  line-height: 1.6;
-  color: #333;
+  font-size: 18px;
+  line-height: 1.25;
+  color: #315f4d;
+  letter-spacing: 0.3px;
+  margin: 0;
+  font-family: Arial, sans-serif;
 }
 
 .date {
   position: absolute;
-  top: 570px;
-  left: 400px;
-  right: 100px;
+  top: 566px;
+  left: 370px;
+  right: 110px;
   text-align: center;
-  font-size: 15px;
+  font-size: 18px;
   color: #0b4d2e;
   font-weight: 600;
+  margin: 0;
+  font-family: Arial, sans-serif;
 }
 
 .signatures {
   position: absolute;
   bottom: 60px;
-  left: 380px;
-  right: 80px;
+  left: 345px;
+  right: 85px;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -390,10 +400,11 @@ function download() {
   margin-bottom: 6px;
 }
 .sig-label {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: #0b4d2e;
   letter-spacing: 1px;
+  font-family: Arial, sans-serif;
 }
 
 .wax-seal {
