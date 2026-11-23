@@ -84,9 +84,13 @@ function download() {
       </div>
 
       <div class="sheet">
-        <!-- Left green geometric panels -->
-        <div class="green-panel" />
-        <div class="green-panel-2" />
+        <div class="left-art" aria-hidden="true">
+          <div class="facet top" />
+          <div class="facet pale" />
+          <div class="facet lower" />
+          <div class="facet center" />
+          <div class="facet bottom" />
+        </div>
         <div class="gold-seal">
           <svg viewBox="0 0 100 100" aria-hidden="true">
             <circle cx="50" cy="50" r="46" fill="url(#gold)" stroke="#b8860b" stroke-width="2" />
@@ -104,8 +108,8 @@ function download() {
 
         <!-- Logos -->
         <div class="logos">
-          <img :src="aapolyLogo" alt="AAPOLY" class="logo" />
           <img :src="itcLogo" alt="ITC" class="logo" />
+          <img :src="aapolyLogo" alt="AAPOLY" class="logo" />
         </div>
 
         <h1 class="title">CERTIFICATE</h1>
@@ -206,38 +210,57 @@ function download() {
   font-family: 'Georgia', 'Times New Roman', serif;
 }
 
-/* Dark green slanted panels on the left */
-.green-panel {
+/* Layered angular panels based on the certificate's left-side design. */
+.left-art {
   position: absolute;
   top: 0;
   left: 0;
-  width: 320px;
+  width: 360px;
   height: 100%;
-  background: #0b4d2e;
-  clip-path: polygon(0 0, 100% 0, 60% 100%, 0 100%);
+  pointer-events: none;
 }
-.green-panel-2 {
+.facet {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 220px;
-  height: 100%;
-  background: #14613a;
-  clip-path: polygon(0 0, 100% 0, 70% 100%, 0 100%);
+  inset: 0;
+}
+.facet.top {
+  width: 275px;
+  background: #0b4d20;
+  clip-path: polygon(0 0, 100% 0, 0 57%);
+}
+.facet.pale {
+  width: 390px;
+  background: #f4f2ed;
+  clip-path: polygon(64% 0, 100% 0, 62% 43%, 43% 57%, 32% 57%);
+}
+.facet.lower {
+  width: 320px;
+  background: #1a7131;
+  clip-path: polygon(0 57%, 82% 100%, 0 100%);
+}
+.facet.center {
+  width: 360px;
+  background: #0d572b;
+  clip-path: polygon(0 57%, 100% 70%, 64% 91%, 80% 100%, 59% 100%);
+}
+.facet.bottom {
+  width: 250px;
+  background: #23813b;
+  clip-path: polygon(0 66%, 75% 100%, 0 100%);
 }
 
 .gold-seal {
   position: absolute;
-  top: 150px;
-  left: 70px;
-  width: 130px;
-  height: 130px;
+  top: 145px;
+  left: 52px;
+  width: 148px;
+  height: 148px;
 }
 
 .logos {
   position: absolute;
   top: 46px;
-  left: 50%;
+  left: 65%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
