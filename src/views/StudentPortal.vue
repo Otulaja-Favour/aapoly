@@ -10,14 +10,18 @@ const matric = ref('')
 const loading = ref(false)
 const searched = ref(false)
 
-const MATRIC_GROUPS = [2, 3, 2, 4]
+// ND matric:  FH-XXX-25-0001      → groups [2, 3, 2, 4]
+// HND matric: HND24-01-04-0001    → groups [5, 2, 2, 4]
+const ND_GROUPS = [2, 3, 2, 4]
+const HND_GROUPS = [5, 2, 2, 4]
 
-/** FH-XXX-25-0001 — uppercases the input and inserts the hyphens as they type. */
+/** Uppercases the input and inserts the hyphens as they type, for both shapes. */
 function formatMatric(value) {
   const clean = String(value).toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const groups = clean.startsWith('HND') ? HND_GROUPS : ND_GROUPS
   const parts = []
   let index = 0
-  for (const size of MATRIC_GROUPS) {
+  for (const size of groups) {
     if (index >= clean.length) break
     parts.push(clean.slice(index, index + size))
     index += size
@@ -139,7 +143,7 @@ function reset() {
             id="matric"
             :value="matric"
             class="input"
-            placeholder="e.g. FH-SWD-25-0001"
+            placeholder="e.g. FH-SWD-25-0001 or HND24-01-04-0001"
             autocomplete="off"
             spellcheck="false"
             @input="onMatricInput"

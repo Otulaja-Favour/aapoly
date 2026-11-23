@@ -13,6 +13,7 @@ import {
   setGroupProjectApproved
 } from '@/lib/api'
 import { buildGroups } from '@/lib/grouping'
+import { isLastYear } from '@/lib/departments'
 import { PROJECTS } from '@/data/projects'
 import { toast } from '@/lib/toast'
 
@@ -27,7 +28,12 @@ const preview = ref([])
 
 // One group per project: the catalogue size decides how many groups exist.
 const groupTotal = computed(() => projects.value.length)
-const unassigned = computed(() => students.value.filter((s) => !s.group_id))
+
+// Last-year (HND) students graduate on certificates and never join a group, so
+// they're kept out of grouping and the "unassigned" count.
+const groupable = computed(() => students.value.filter((s) => !isLastYear(s.matric_number)))
+const lastYearCount = computed(() => students.value.length - groupable.value.length)
+const unassigned = computed(() => groupable.value.filter((s) => !s.group_id))
 
 const savedMembers = (id) => students.value.filter((s) => s.group_id === id)
 const savedProjectName = (id) => projects.value.find((p) => p.id === id)?.name || 'No project'
@@ -51,7 +57,7 @@ async function load() {
 }
 
 function generate() {
-  if (students.value.length < 2) {
+  if (groupable.value.length < 2) {
     toast.error('Add at least two students before generating groups.')
     return
   }
@@ -59,8 +65,8 @@ function generate() {
     toast.error('No projects available to form groups from.')
     return
   }
-  preview.value = buildGroups(students.value, projects.value, { groupCount: groupTotal.value })
-  toast.info(`Shuffled ${students.value.length} students into ${preview.value.length} groups.`)
+  preview.value = buildGroups(groupable.value, projects.value, { groupCount: groupTotal.value })
+  toast.info(`Shuffled ${groupable.value.length} students into ${preview.value.length} groups.`)
 }
 
 async function publish() {
@@ -162,8 +168,8 @@ onMounted(load)
       <div class="controls-head">
         <h3>Generate random groups</h3>
         <p class="muted">
-          {{ students.length }} student{{ students.length === 1 ? '' : 's' }} · {{ projects.length }}
-          project{{ projects.length === 1 ? '' : 's' }} available
+          {{ groupable.length }} student{{ groupable.length === 1 ? '' : 's' }} to group · {{ projects.length }}
+          project{{ projects.length === 1 ? '' : 's' }} available<template v-if="lastYearCount"> · {{ lastYearCount }} last-year (HND) excluded</template>
         </p>
       </div>
 
@@ -176,7 +182,7 @@ onMounted(load)
       </p>
 
       <div class="controls-actions">
-        <BaseButton :disabled="loading || !students.length" @click="generate">
+        <BaseButton :disabled="loading || !groupable.length" @click="generate">
           {{ preview.length ? 'Re-shuffle' : 'Generate groups' }}
         </BaseButton>
         <BaseButton

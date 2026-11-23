@@ -50,8 +50,11 @@ async function load() {
   }
 }
 
-/** Matric numbers look like FH-NCC-25-0001 — a hyphenated code with at least 3 parts. */
-const MATRIC_RE = /^[A-Za-z]{2,6}(-[A-Za-z0-9]{1,6}){2,3}$/
+/** Matric numbers come in two shapes:
+ *    ND  — FH-NCC-25-0001  (letters, then hyphenated parts)
+ *    HND — HND24-01-04-0001 (letters + a 2-digit year, then hyphenated parts)
+ */
+const MATRIC_RE = /^[A-Za-z]{2,6}[0-9]{0,2}(-[A-Za-z0-9]{1,6}){2,3}$/
 const isMatric = (token) => MATRIC_RE.test(String(token || '').trim())
 
 /**
@@ -176,9 +179,10 @@ async function clearAll() {
   }
 }
 
-/** Pulls every matric-shaped token out of pasted text (handles messy names/typos). */
+/** Pulls every matric-shaped token out of pasted text (handles messy names/typos).
+ *  Handles both ND (FH-SWD-25-0001) and HND (HND24-01-04-0001) shapes. */
 function extractMatrics(text) {
-  return [...String(text).toUpperCase().matchAll(/[A-Z]{2,6}[- ][A-Z0-9]{1,6}[- ][0-9]{1,6}[- ][0-9]{1,6}/g)]
+  return [...String(text).toUpperCase().matchAll(/[A-Z]{2,6}[0-9]{0,2}[- ][A-Z0-9]{1,6}[- ][0-9]{1,6}[- ][0-9]{1,6}/g)]
     .map((m) => m[0].replace(/\s+/g, '-'))
 }
 
@@ -300,7 +304,7 @@ onMounted(load)
                 :class="{ active: yearFilter === 'current' }"
                 @click="yearFilter = 'current'"
               >
-                This year
+                This year ({{ students.filter((s) => !isLastYear(s.matric_number)).length }})
               </button>
               <button
                 type="button"
@@ -308,7 +312,7 @@ onMounted(load)
                 :class="{ active: yearFilter === 'last' }"
                 @click="yearFilter = 'last'"
               >
-                Last year
+                Last year ({{ students.filter((s) => isLastYear(s.matric_number)).length }})
               </button>
             </div>
             <input v-model="search" class="input search" placeholder="Search name or matric…" />
@@ -479,6 +483,7 @@ onMounted(load)
 }
 
 .roster {
+  grid-column: 1 / -1;
   padding: 22px;
 }
 .roster-head {
