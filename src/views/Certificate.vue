@@ -92,9 +92,15 @@ function download() {
     </div>
 
     <div v-else-if="!certificatePaid" class="state">
-      <p>Your certificate is ready, but it stays locked until the download fee is paid.</p>
-      <p v-if="certificateFee" class="fee">Download fee: <strong>{{ feeLabel }}</strong></p>
-      <RouterLink to="/student" class="back-link">← Pay in the student portal</RouterLink>
+      <p v-if="certificateFee">
+        Your certificate is ready, but it stays locked until the
+        <strong>{{ feeLabel }}</strong> download fee is paid.
+      </p>
+      <p v-else>
+        Your certificate is ready, but the download fee hasn't been set yet. Please
+        contact your lecturer.
+      </p>
+      <RouterLink to="/student" class="back-link">← Back to student portal</RouterLink>
     </div>
 
     <template v-else>
@@ -201,10 +207,6 @@ function download() {
   color: var(--brand);
   text-decoration: none;
   font-weight: 600;
-}
-.fee {
-  margin: 6px 0 0;
-  color: var(--text);
 }
 
 .toolbar {

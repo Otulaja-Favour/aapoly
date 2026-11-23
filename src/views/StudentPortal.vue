@@ -266,7 +266,7 @@ function reset() {
               Download my certificate
             </RouterLink>
             <button
-              v-else-if="certificateReady"
+              v-else-if="certificateReady && certificateFee"
               type="button"
               class="cert-btn"
               :disabled="paying"
@@ -278,6 +278,9 @@ function reset() {
               </svg>
               Pay {{ feeLabel }} to unlock certificate
             </button>
+            <span v-else-if="certificateReady" class="muted cert-note">
+              Certificate fee not set yet — contact your lecturer.
+            </span>
           </div>
 
           <div class="grid">
@@ -348,7 +351,7 @@ function reset() {
               Download my certificate
             </RouterLink>
             <button
-              v-else-if="certificateReady"
+              v-else-if="certificateReady && certificateFee"
               type="button"
               class="cert-btn"
               :disabled="paying"
@@ -360,6 +363,9 @@ function reset() {
               </svg>
               Pay {{ feeLabel }} to unlock certificate
             </button>
+            <span v-else-if="certificateReady" class="muted cert-note">
+              Certificate fee not set yet — contact your lecturer.
+            </span>
           </div>
         </section>
 
@@ -769,6 +775,9 @@ function reset() {
   transform: translateY(6px);
 }
 
+.cert-note {
+  font-size: 13.5px;
+}
 .pay-overlay {
   position: fixed;
   inset: 0;
