@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import BaseButton from '@/components/BaseButton.vue'
 import ConfigNotice from '@/components/ConfigNotice.vue'
 import { listAttendance, listStudents, setAttendance } from '@/lib/api'
-import { departmentFromMatric } from '@/lib/departments'
+import { departmentFromMatric, isLastYear } from '@/lib/departments'
 import { toast } from '@/lib/toast'
 
 const WEEKS = Array.from({ length: 12 }, (_, i) => i + 1)
@@ -12,6 +12,19 @@ const students = ref([])
 const attendance = ref([])
 const loading = ref(true)
 const saving = ref(false)
+
+// '' until a year is picked; marking is gated behind this choice.
+const yearFilter = ref('')
+
+const cohortStudents = computed(() =>
+  students.value.filter((s) =>
+    yearFilter.value === 'last' ? isLastYear(s.matric_number) : !isLastYear(s.matric_number)
+  )
+)
+const yearCounts = computed(() => ({
+  current: students.value.filter((s) => !isLastYear(s.matric_number)).length,
+  last: students.value.filter((s) => isLastYear(s.matric_number)).length
+}))
 
 const byKey = computed(() => {
   const map = {}
@@ -51,9 +64,9 @@ async function toggle(student, week) {
 async function markAllPresent(week) {
   saving.value = true
   try {
-    await Promise.all(students.value.map((s) => setAttendance(s.id, week, true)))
+    await Promise.all(cohortStudents.value.map((s) => setAttendance(s.id, week, true)))
     await load()
-    toast.success(`Week ${week} marked present for everyone.`)
+    toast.success(`Week ${week} marked present for all ${cohortStudents.value.length} students.`)
   } catch (err) {
     toast.error(err.message || 'Could not mark attendance.')
   } finally {
@@ -62,9 +75,9 @@ async function markAllPresent(week) {
 }
 
 const totalPresent = computed(() =>
-  students.value.reduce((sum, s) => sum + presentCount(s.id), 0)
+  cohortStudents.value.reduce((sum, s) => sum + presentCount(s.id), 0)
 )
-const totalPossible = computed(() => students.value.length * WEEKS.length)
+const totalPossible = computed(() => cohortStudents.value.length * WEEKS.length)
 
 onMounted(load)
 </script>
@@ -77,17 +90,53 @@ onMounted(load)
       <div>
         <h3>Attendance · 12 weeks</h3>
         <p class="muted">
-          Click a cell to toggle present / absent. Green = present, grey = absent.
+          First choose which year you're marking, then click a cell to toggle present / absent.
+          Green = present, grey = absent.
         </p>
       </div>
-      <p class="muted rate">
+      <p v-if="yearFilter" class="muted rate">
         {{ totalPresent }} / {{ totalPossible }} check-ins
         ({{ totalPossible ? Math.round((totalPresent / totalPossible) * 100) : 0 }}%)
       </p>
     </section>
 
+    <section class="card choose">
+      <div class="choose-head">
+        <span class="step-label">Step 1 · Choose a year</span>
+        <p v-if="!yearFilter" class="muted">Pick a year to load its attendance sheet.</p>
+        <p v-else class="muted">
+          Marking <strong>{{ yearFilter === 'last' ? 'last year (HND)' : 'this year' }}</strong> ·
+          {{ cohortStudents.length }} student{{ cohortStudents.length === 1 ? '' : 's' }}
+        </p>
+      </div>
+      <div class="year-tabs" role="tablist">
+        <button
+          type="button"
+          class="year-tab"
+          :class="{ active: yearFilter === 'current' }"
+          @click="yearFilter = 'current'"
+        >
+          This year ({{ yearCounts.current }})
+        </button>
+        <button
+          type="button"
+          class="year-tab"
+          :class="{ active: yearFilter === 'last' }"
+          @click="yearFilter = 'last'"
+        >
+          Last year ({{ yearCounts.last }})
+        </button>
+      </div>
+    </section>
+
     <p v-if="loading" class="muted">Loading…</p>
     <p v-else-if="!students.length" class="muted">No students in the class list yet.</p>
+    <p v-else-if="!yearFilter" class="muted pad-hint">
+      Choose a year above to start marking attendance.
+    </p>
+    <p v-else-if="!cohortStudents.length" class="muted pad-hint">
+      No {{ yearFilter === 'last' ? 'last-year' : 'this-year' }} students in the class list.
+    </p>
 
     <div v-else class="table-wrap">
       <table class="table">
@@ -108,7 +157,7 @@ onMounted(load)
           </tr>
         </thead>
         <tbody>
-          <tr v-for="student in students" :key="student.id">
+          <tr v-for="student in cohortStudents" :key="student.id">
             <td class="sticky">
               <span class="name">{{ student.full_name }}</span>
               <span class="faint matric">
@@ -154,6 +203,57 @@ onMounted(load)
 }
 .rate {
   font-weight: 600;
+}
+
+.choose {
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.choose-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.choose-head p {
+  margin: 0;
+  font-size: 13.5px;
+}
+.step-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.year-tabs {
+  display: inline-flex;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 2px;
+}
+.year-tab {
+  border: none;
+  background: transparent;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--faint);
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.year-tab.active {
+  background: var(--brand, #2563eb);
+  color: #fff;
+}
+.pad-hint {
+  padding: 18px 2px;
+  font-size: 14px;
 }
 
 .table-wrap {
