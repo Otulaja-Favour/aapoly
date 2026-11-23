@@ -222,7 +222,7 @@ function reset() {
               v-for="group in allGroups"
               :key="group.id"
               class="card group"
-              :class="{ highlight: group.id === student.group_id }"
+              :class="{ highlight: group.id === student.group_id, dim: myGroup && group.id !== myGroup.id }"
             >
               <div class="group-head">
                 <h4>
@@ -450,6 +450,17 @@ function reset() {
 .project.highlight {
   border-color: var(--brand);
   box-shadow: 0 0 0 3px var(--brand-soft);
+}
+
+/* Other groups fade back so the student's own group stands out. */
+.group.dim {
+  opacity: 0.45;
+  filter: grayscale(0.6);
+  transition: opacity 0.15s ease, filter 0.15s ease;
+}
+.group.dim:hover {
+  opacity: 1;
+  filter: none;
 }
 
 .group-head,
