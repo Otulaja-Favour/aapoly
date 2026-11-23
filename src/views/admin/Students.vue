@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import BaseButton from '@/components/BaseButton.vue'
 import ConfigNotice from '@/components/ConfigNotice.vue'
 import ConfirmModal from '@/components/ConfirmModal.vue'
@@ -14,6 +14,8 @@ const students = ref([])
 const groups = ref([])
 const search = ref('')
 const yearFilter = ref('all') // all | current | last
+const departmentFilter = ref('all')
+const paymentFilter = ref('all') // all | paid | unpaid
 const loading = ref(true)
 const adding = ref(false)
 const clearing = ref(false)
@@ -22,11 +24,27 @@ const confirmClear = ref(false)
 const pendingDelete = ref(null)
 const deleting = ref(false)
 
-const filtered = computed(() => {
-  const q = search.value.trim().toLowerCase()
-  return students.value.filter((s) => {
+const groupName = (id) => groups.value.find((g) => g.id === id)?.name || '—'
+const dept = (matricNumber) => departmentFromMatric(matricNumber)
+const yearStudents = computed(() =>
+  students.value.filter((s) => {
     if (yearFilter.value === 'current' && isLastYear(s.matric_number)) return false
     if (yearFilter.value === 'last' && !isLastYear(s.matric_number)) return false
+    return true
+  })
+)
+const departments = computed(() =>
+  [...new Set(yearStudents.value.map((s) => dept(s.matric_number)).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b))
+)
+const filtered = computed(() => {
+  const q = search.value.trim().toLowerCase()
+  return yearStudents.value.filter((s) => {
+    if (departmentFilter.value !== 'all' && dept(s.matric_number) !== departmentFilter.value) {
+      return false
+    }
+    if (paymentFilter.value === 'paid' && !s.has_paid) return false
+    if (paymentFilter.value === 'unpaid' && s.has_paid) return false
     if (!q) return true
     return (
       s.full_name.toLowerCase().includes(q) ||
@@ -35,8 +53,9 @@ const filtered = computed(() => {
   })
 })
 
-const groupName = (id) => groups.value.find((g) => g.id === id)?.name || '—'
-const dept = (matricNumber) => departmentFromMatric(matricNumber)
+watch(yearFilter, () => {
+  departmentFilter.value = 'all'
+})
 
 async function load() {
   try {
@@ -317,6 +336,17 @@ onMounted(load)
                 Last year ({{ students.filter((s) => isLastYear(s.matric_number)).length }})
               </button>
             </div>
+            <select v-model="departmentFilter" class="input filter-select" aria-label="Filter by department">
+              <option value="all">All departments</option>
+              <option v-for="department in departments" :key="department" :value="department">
+                {{ department }}
+              </option>
+            </select>
+            <select v-model="paymentFilter" class="input filter-select" aria-label="Filter by payment status">
+              <option value="all">All payment statuses</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
             <input v-model="search" class="input search" placeholder="Search name or matric…" />
             <BaseButton
               v-if="students.length"
@@ -333,7 +363,9 @@ onMounted(load)
         <p v-else-if="!students.length" class="muted pad">
           No students yet. Paste your class list on the left.
         </p>
-        <p v-else-if="!filtered.length" class="muted pad">No one matches “{{ search }}”.</p>
+        <p v-else-if="!filtered.length" class="muted pad">
+          No students match the selected year, department, payment status, and search.
+        </p>
 
         <ul v-else class="roster-list">
           <li v-for="(student, index) in filtered" :key="student.id">
@@ -534,6 +566,10 @@ onMounted(load)
 .search {
   width: 210px;
 }
+.filter-select {
+  width: auto;
+  min-width: 170px;
+}
 
 .pad {
   padding: 18px 2px;
@@ -604,6 +640,17 @@ onMounted(load)
   }
   .roster-tools {
     width: 100%;
+  }
+  .year-tabs {
+    width: 100%;
+  }
+  .year-tab {
+    flex: 1;
+    padding-inline: 8px;
+  }
+  .filter-select {
+    flex: 1;
+    min-width: 135px;
   }
 }
 </style>
