@@ -225,6 +225,9 @@ function reset() {
                     </span>
                     <span class="faint matric">{{ mate.matric_number }}</span>
                   </span>
+                <span class="badge payment-state" :class="mate.has_paid ? 'success' : 'warn'">
+                  {{ mate.has_paid ? 'Paid' : 'Unpaid' }}
+                </span>
                 </li>
               </ul>
             </article>
@@ -613,6 +616,10 @@ function reset() {
   color: var(--brand-strong);
   font-size: 11px;
   font-weight: 700;
+}
+.payment-state {
+  flex: none;
+  margin-left: auto;
 }
 
 .fade-enter-active,
