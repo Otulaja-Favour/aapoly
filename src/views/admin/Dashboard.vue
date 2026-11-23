@@ -16,6 +16,9 @@ const certDate = ref('17th December 2025')
 const certProgram = ref(
   'Mandatory Skills Qualification (MSQ) Programme at Abraham Adesanya Polytechnic (AAPOLY), in partnership with the Ijebu Tech Community (ITC)'
 )
+// Certificate download fee per cohort, in whole Naira. Blank = not set (payment blocked).
+const certFeeCurrent = ref('')
+const certFeeLast = ref('')
 
 const unassigned = computed(
   () => students.value.filter((s) => !s.group_id).length
@@ -45,6 +48,8 @@ onMounted(async () => {
     settings.value = st || {}
     certDate.value = st.certificate_date || certDate.value
     certProgram.value = st.certificate_program || certProgram.value
+    certFeeCurrent.value = st.certificate_fee_current || ''
+    certFeeLast.value = st.certificate_fee_last || ''
   } catch (err) {
     toast.error(err.message || 'Could not load dashboard data.')
   } finally {
@@ -82,15 +87,38 @@ async function uploadSignature(key, label, event) {
   }
 }
 
-async function saveCertText() {
+async function saveCertSettings() {
+  const current = Number(certFeeCurrent.value)
+  const last = Number(certFeeLast.value)
+  if (!Number.isFinite(current) || current <= 0) {
+    toast.error('Enter a certificate fee for this year (in Naira).')
+    return
+  }
+  if (!Number.isFinite(last) || last <= 0) {
+    toast.error('Enter a certificate fee for last year (in Naira).')
+    return
+  }
+
+  const fees = {
+    certificate_fee_current: String(Math.round(current)),
+    certificate_fee_last: String(Math.round(last))
+  }
   try {
     await Promise.all([
       setSetting('certificate_date', certDate.value),
-      setSetting('certificate_program', certProgram.value)
+      setSetting('certificate_program', certProgram.value),
+      setSetting('certificate_fee_current', fees.certificate_fee_current),
+      setSetting('certificate_fee_last', fees.certificate_fee_last)
     ])
-    toast.success('Certificate text saved.')
+    settings.value = {
+      ...settings.value,
+      certificate_date: certDate.value,
+      certificate_program: certProgram.value,
+      ...fees
+    }
+    toast.success('Certificate settings saved.')
   } catch (err) {
-    toast.error(err.message || 'Could not save certificate text.')
+    toast.error(err.message || 'Could not save certificate settings.')
   }
 }
 </script>
@@ -192,8 +220,24 @@ async function saveCertText() {
           <span>Programme text</span>
           <textarea v-model="certProgram" class="input" rows="3"></textarea>
         </label>
-        <button class="save-btn" @click="saveCertText">Save certificate text</button>
       </div>
+
+      <div class="fee-grid">
+        <label>
+          <span>Certificate download fee — this year (₦)</span>
+          <input v-model="certFeeCurrent" class="input" type="number" min="0" step="50" placeholder="2000" />
+        </label>
+        <label>
+          <span>Certificate download fee — last year (₦)</span>
+          <input v-model="certFeeLast" class="input" type="number" min="0" step="50" placeholder="2000" />
+        </label>
+      </div>
+      <p class="muted fee-hint">
+        Students pay this to unlock and download their certificate. Payment is verified with
+        Paystack before the certificate is released.
+      </p>
+
+      <button class="save-btn" @click="saveCertSettings">Save certificate settings</button>
     </section>
   </div>
 </template>
@@ -337,12 +381,22 @@ async function saveCertText() {
   flex-direction: column;
   gap: 12px;
 }
-.text-fields label {
+.text-fields label,
+.fee-grid label {
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-size: 13.5px;
   font-weight: 600;
+}
+.fee-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.fee-hint {
+  margin: -6px 0 0;
+  font-size: 13px;
 }
 .save-btn {
   align-self: flex-start;

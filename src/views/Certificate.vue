@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { findStudentByMatric, listGroups, listSettings } from '@/lib/api'
+import { isLastYear } from '@/lib/departments'
 import aapolyLogo from '@/assets/aapolys.webp'
 import itcLogo from '@/assets/ijebu.png'
 
@@ -19,6 +20,24 @@ const error = ref('')
 //  - their group's project was marked complete.
 const certificateReady = computed(
   () => Boolean(student.value?.certificate_approved || group.value?.project_approved)
+)
+
+// The certificate also stays locked until the download fee has been paid.
+const certificatePaid = computed(() => Boolean(student.value?.certificate_paid))
+
+const certificateFee = computed(() => {
+  const key = isLastYear(student.value?.matric_number)
+    ? 'certificate_fee_last'
+    : 'certificate_fee_current'
+  const amount = Number(settings.value[key])
+  return Number.isFinite(amount) && amount > 0 ? amount : 0
+})
+const feeLabel = computed(() =>
+  new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0
+  }).format(certificateFee.value)
 )
 
 const programName = computed(
@@ -70,6 +89,12 @@ function download() {
         }}
       </p>
       <RouterLink to="/student" class="back-link">← Back to student portal</RouterLink>
+    </div>
+
+    <div v-else-if="!certificatePaid" class="state">
+      <p>Your certificate is ready, but it stays locked until the download fee is paid.</p>
+      <p v-if="certificateFee" class="fee">Download fee: <strong>{{ feeLabel }}</strong></p>
+      <RouterLink to="/student" class="back-link">← Pay in the student portal</RouterLink>
     </div>
 
     <template v-else>
@@ -176,6 +201,10 @@ function download() {
   color: var(--brand);
   text-decoration: none;
   font-weight: 600;
+}
+.fee {
+  margin: 6px 0 0;
+  color: var(--text);
 }
 
 .toolbar {

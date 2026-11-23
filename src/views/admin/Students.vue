@@ -249,6 +249,20 @@ async function toggleCertificate(student) {
   }
 }
 
+/** Manual override for students who paid the download fee outside Paystack. */
+async function toggleCertPaid(student) {
+  const next = !student.certificate_paid
+  try {
+    await updateStudent(student.id, { certificate_paid: next })
+    student.certificate_paid = next
+    toast.info(
+      `Certificate fee ${next ? 'marked paid' : 'marked unpaid'} for ${student.full_name.split(' ')[0]}.`
+    )
+  } catch (err) {
+    toast.error(err.message || 'Could not update certificate payment.')
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -388,6 +402,15 @@ onMounted(load)
                 @click="togglePaid(student)"
               >
                 {{ student.has_paid ? 'Paid' : 'Unpaid' }}
+              </button>
+              <button
+                type="button"
+                class="badge toggle"
+                :class="student.certificate_paid ? 'success' : 'faint-badge'"
+                :title="student.certificate_paid ? 'Certificate fee paid — click to mark unpaid' : 'Certificate fee unpaid — click to mark paid (manual/offline payment)'"
+                @click="toggleCertPaid(student)"
+              >
+                {{ student.certificate_paid ? 'Cert fee ✓' : 'Cert fee' }}
               </button>
               <button
                 type="button"

@@ -3,7 +3,9 @@ import { computed, nextTick, ref } from 'vue'
 import BaseButton from '@/components/BaseButton.vue'
 import ConfigNotice from '@/components/ConfigNotice.vue'
 import Logo from '@/components/Logo.vue'
-import { findStudentByMatric, listGroups, listProjects, listStudents } from '@/lib/api'
+import { findStudentByMatric, listGroups, listProjects, listSettings, listStudents } from '@/lib/api'
+import { isLastYear } from '@/lib/departments'
+import { isPaystackConfigured, makeReference, payWithPaystack, verifyPayment } from '@/lib/paystack'
 import { toast } from '@/lib/toast'
 
 const matric = ref('')
@@ -56,6 +58,11 @@ async function onMatricInput(event) {
 const student = ref(null)
 const allGroups = ref([])
 const allProjects = ref([])
+const settings = ref({})
+
+const payOpen = ref(false)
+const payEmail = ref('')
+const paying = ref(false)
 
 const myGroup = computed(
   () => allGroups.value.find((g) => g.id === student.value?.group_id) || null
@@ -68,6 +75,73 @@ const certificateReady = computed(
   () => Boolean(student.value?.certificate_approved || myGroup.value?.project_approved)
 )
 
+// …and it can only be opened once the certificate fee has been paid.
+const certificatePaid = computed(() => Boolean(student.value?.certificate_paid))
+const certificateUnlocked = computed(() => certificateReady.value && certificatePaid.value)
+
+// The fee is per cohort: HND (last year) or ND (this year).
+const certificateFee = computed(() => {
+  const key = isLastYear(student.value?.matric_number)
+    ? 'certificate_fee_last'
+    : 'certificate_fee_current'
+  const amount = Number(settings.value[key])
+  return Number.isFinite(amount) && amount > 0 ? amount : 0
+})
+const feeLabel = computed(() =>
+  new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0
+  }).format(certificateFee.value)
+)
+
+function openPay() {
+  if (!isPaystackConfigured) {
+    toast.error('Card payment is not set up yet. Please contact your lecturer.')
+    return
+  }
+  if (!certificateFee.value) {
+    toast.error('The certificate fee has not been set yet. Please contact your lecturer.')
+    return
+  }
+  payOpen.value = true
+}
+
+async function refreshStudent() {
+  const found = await findStudentByMatric(student.value.matric_number)
+  if (found) student.value = found
+}
+
+async function startPayment() {
+  const email = payEmail.value.trim()
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    toast.error('Enter a valid email address for your receipt.')
+    return
+  }
+
+  paying.value = true
+  try {
+    const reference = makeReference(student.value.matric_number)
+    await payWithPaystack({
+      email,
+      amountNaira: certificateFee.value,
+      reference,
+      matricNumber: student.value.matric_number
+    })
+    // Only the server can confirm the money — never trust the popup alone.
+    await verifyPayment({ reference, matricNumber: student.value.matric_number })
+    await refreshStudent()
+    payOpen.value = false
+    payEmail.value = ''
+    toast.success('Payment confirmed — your certificate is unlocked.')
+  } catch (err) {
+    if (err?.cancelled) toast.info('Payment cancelled.')
+    else toast.error(err.message || 'Could not complete the payment.')
+  } finally {
+    paying.value = false
+  }
+}
+
 async function lookup() {
   const query = matric.value.trim()
   if (!query) {
@@ -78,14 +152,16 @@ async function lookup() {
   loading.value = true
   searched.value = false
   try {
-    const [found, groups, students, projects] = await Promise.all([
+    const [found, groups, students, projects, config] = await Promise.all([
       findStudentByMatric(query),
       listGroups(),
       listStudents(),
-      listProjects()
+      listProjects(),
+      listSettings()
     ])
 
     student.value = found
+    settings.value = config || {}
     allProjects.value = projects || []
     allGroups.value = (groups || [])
       .map((group) => ({
@@ -107,6 +183,8 @@ function reset() {
   student.value = null
   allGroups.value = []
   allProjects.value = []
+  settings.value = {}
+  payOpen.value = false
   searched.value = false
 }
 </script>
@@ -176,7 +254,7 @@ function reset() {
               {{ student.has_paid ? 'Payment received' : 'Payment pending' }}
             </span>
             <RouterLink
-              v-if="certificateReady"
+              v-if="certificateUnlocked"
               :to="{ name: 'certificate', params: { matric: student.matric_number } }"
               class="cert-btn"
               target="_blank"
@@ -187,6 +265,19 @@ function reset() {
               </svg>
               Download my certificate
             </RouterLink>
+            <button
+              v-else-if="certificateReady"
+              type="button"
+              class="cert-btn"
+              :disabled="paying"
+              @click="openPay"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <path d="M2 10h20" />
+              </svg>
+              Pay {{ feeLabel }} to unlock certificate
+            </button>
           </div>
 
           <div class="grid">
@@ -245,7 +336,7 @@ function reset() {
               {{ student.has_paid ? 'Payment received' : 'Payment pending' }}
             </span>
             <RouterLink
-              v-if="certificateReady"
+              v-if="certificateUnlocked"
               :to="{ name: 'certificate', params: { matric: student.matric_number } }"
               class="cert-btn"
               target="_blank"
@@ -256,6 +347,19 @@ function reset() {
               </svg>
               Download my certificate
             </RouterLink>
+            <button
+              v-else-if="certificateReady"
+              type="button"
+              class="cert-btn"
+              :disabled="paying"
+              @click="openPay"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <path d="M2 10h20" />
+              </svg>
+              Pay {{ feeLabel }} to unlock certificate
+            </button>
           </div>
         </section>
 
@@ -321,6 +425,39 @@ function reset() {
         </section>
       </template>
     </main>
+
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="payOpen" class="pay-overlay" @click.self="paying || (payOpen = false)">
+          <div class="pay-dialog" role="dialog" aria-modal="true" aria-label="Certificate payment">
+            <h3>Unlock your certificate</h3>
+            <p class="muted">
+              Pay <strong>{{ feeLabel }}</strong> to download your certificate. A receipt is
+              sent to the email you enter below.
+            </p>
+            <label class="pay-field">
+              <span>Email for your receipt</span>
+              <input
+                v-model="payEmail"
+                class="input"
+                type="email"
+                placeholder="you@example.com"
+                autocomplete="email"
+                @keyup.enter="startPayment"
+              />
+            </label>
+            <div class="pay-actions">
+              <BaseButton variant="ghost" :disabled="paying" @click="payOpen = false">
+                Cancel
+              </BaseButton>
+              <BaseButton :loading="paying" @click="startPayment">
+                Pay {{ feeLabel }}
+              </BaseButton>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -630,6 +767,49 @@ function reset() {
 .fade-leave-to {
   opacity: 0;
   transform: translateY(6px);
+}
+
+.pay-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(18, 20, 31, 0.45);
+  backdrop-filter: blur(2px);
+}
+.pay-dialog {
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pay-dialog h3 {
+  font-size: 19px;
+}
+.pay-dialog p {
+  margin: 0;
+  font-size: 14.5px;
+}
+.pay-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.pay-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
 }
 
 @media (max-width: 720px) {
