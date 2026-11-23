@@ -4,7 +4,7 @@ import BaseButton from '@/components/BaseButton.vue'
 import ConfigNotice from '@/components/ConfigNotice.vue'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import { addStudents, clearStudents, deleteStudent, listGroups, listStudents, markPaidByMatric, updateStudent } from '@/lib/api'
-import { departmentFromMatric } from '@/lib/departments'
+import { departmentFromMatric, isLastYear } from '@/lib/departments'
 import { toast } from '@/lib/toast'
 
 const raw = ref('')
@@ -13,6 +13,7 @@ const paidMethod = ref('company')
 const students = ref([])
 const groups = ref([])
 const search = ref('')
+const yearFilter = ref('all') // all | current | last
 const loading = ref(true)
 const adding = ref(false)
 const clearing = ref(false)
@@ -23,12 +24,15 @@ const deleting = ref(false)
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
-  if (!q) return students.value
-  return students.value.filter(
-    (s) =>
+  return students.value.filter((s) => {
+    if (yearFilter.value === 'current' && isLastYear(s.matric_number)) return false
+    if (yearFilter.value === 'last' && !isLastYear(s.matric_number)) return false
+    if (!q) return true
+    return (
       s.full_name.toLowerCase().includes(q) ||
       s.matric_number.toLowerCase().includes(q)
-  )
+    )
+  })
 })
 
 const groupName = (id) => groups.value.find((g) => g.id === id)?.name || '—'
@@ -281,6 +285,32 @@ onMounted(load)
             <p class="muted">{{ students.length }} student{{ students.length === 1 ? '' : 's' }} · {{ students.filter((s) => s.has_paid).length }} paid · {{ students.filter((s) => s.certificate_approved).length }} certificates</p>
           </div>
           <div class="roster-tools">
+            <div class="year-tabs" role="tablist">
+              <button
+                type="button"
+                class="year-tab"
+                :class="{ active: yearFilter === 'all' }"
+                @click="yearFilter = 'all'"
+              >
+                All ({{ students.length }})
+              </button>
+              <button
+                type="button"
+                class="year-tab"
+                :class="{ active: yearFilter === 'current' }"
+                @click="yearFilter = 'current'"
+              >
+                This year
+              </button>
+              <button
+                type="button"
+                class="year-tab"
+                :class="{ active: yearFilter === 'last' }"
+                @click="yearFilter = 'last'"
+              >
+                Last year
+              </button>
+            </div>
             <input v-model="search" class="input search" placeholder="Search name or matric…" />
             <BaseButton
               v-if="students.length"
@@ -470,6 +500,29 @@ onMounted(load)
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+}
+.year-tabs {
+  display: inline-flex;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 2px;
+}
+.year-tab {
+  border: none;
+  background: transparent;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--faint);
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.year-tab.active {
+  background: var(--brand, #2563eb);
+  color: #fff;
 }
 .search {
   width: 210px;
