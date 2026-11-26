@@ -82,16 +82,18 @@ const isMatric = (token) => MATRIC_RE.test(String(token || '').trim())
  * Accepts three paste shapes; blank lines and section headers are ignored:
  *   "Full Name, Matric"    (comma or tab)
  *   "Full Name MATRIC"     (matric as the last token on the line)
- *   "Full Name" then "MATRIC" on the next line
+ *   Name and matric on separate lines, in either order
  */
 function parseList(text) {
   const rows = []
   let pendingName = ''
+  let pendingMatric = ''
 
   for (const line of text.split(/\r?\n/)) {
     const trimmed = line.trim()
     if (!trimmed) {
       pendingName = ''
+      pendingMatric = ''
       continue
     }
 
@@ -101,17 +103,21 @@ function parseList(text) {
       const name = parts.filter((p) => p !== matric).join(' ')
       if (name && matric) rows.push({ full_name: name, matric_number: matric })
       pendingName = ''
+      pendingMatric = ''
       continue
     }
 
     const tokens = trimmed.split(/\s+/)
     const last = tokens[tokens.length - 1]
 
-    // Matric on its own line → pairs with the name directly above it.
+    // Matric on its own line → pairs with the name above it, or waits for the
+    // name on the next line (both paste orders are common).
     if (tokens.length === 1 && isMatric(last)) {
       if (pendingName) {
         rows.push({ full_name: pendingName, matric_number: last })
         pendingName = ''
+      } else {
+        pendingMatric = last
       }
       continue
     }
@@ -120,11 +126,18 @@ function parseList(text) {
     if (tokens.length >= 2 && isMatric(last)) {
       rows.push({ full_name: tokens.slice(0, -1).join(' '), matric_number: last })
       pendingName = ''
+      pendingMatric = ''
       continue
     }
 
-    // Otherwise it's a name (or a section header) waiting for its matric.
-    pendingName = trimmed
+    // A name line: pair it with a matric waiting above it, otherwise hold it for
+    // the matric that follows.
+    if (pendingMatric) {
+      rows.push({ full_name: trimmed, matric_number: pendingMatric })
+      pendingMatric = ''
+    } else {
+      pendingName = trimmed
+    }
   }
 
   return rows
